@@ -3,8 +3,14 @@ name: Deploy site
 # The published site is assembled from two sources, neither of which puts a
 # binary in this repo's history:
 #
-#   this repo            the Jekyll pages, the firmware contract among them
-#   sim-mesh/sim-mesh    its `firmware` release, unpacked to /firmware/
+#   this repo            the Jekyll pages
+#   sim-mesh/sim-mesh    its CONTRACT.md, the firmware contract, as the page
+#                        /using-firmware/building/; and its `firmware`
+#                        release, unpacked to /firmware/
+#
+# The contract lives beside the code that keeps it, and the site shows that
+# one file: a deploy takes it from sim-mesh's main. A daily deploy picks up a
+# change to it without anything here changing.
 #
 # The release is the store of pre-built firmware: every zip, firmware.yaml and
 # the index.html made from it, which sim-mesh's `firmware prebuilt` and the
@@ -19,6 +25,8 @@ on:
   # release, so new firmware is on the site without a commit here.
   repository_dispatch:
     types: [firmware-published]
+  schedule:
+    - cron: '17 4 * * *'
 
 env:
   FIRMWARE_REPO: sim-mesh/sim-mesh
@@ -39,6 +47,17 @@ jobs:
     steps:
       - name: Checkout site
         uses: actions/checkout@v4
+
+      - name: Checkout sim-mesh's contract
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.FIRMWARE_REPO }}
+          path: _sim-mesh
+          sparse-checkout: CONTRACT.md
+          sparse-checkout-cone-mode: false
+
+      - name: The contract as its page
+        run: python3 _tools/contract.py _sim-mesh/CONTRACT.md
 
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1

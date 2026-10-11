@@ -3,6 +3,8 @@ _site/
 .jekyll-metadata
 .sass-cache/
 vendor/
+_includes/contract.md
+_sim-mesh/
 .bundle/
 Gemfile.lock
 .DS_Store
