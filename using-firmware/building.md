@@ -8,11 +8,13 @@ description: >-
   the driver, the ether's protocol, and how to build against the virtual radio.
 ---
 
-This page is everything that passes between sim-mesh and a firmware: the
-zip, what a station is given, time, the driver, the ether and the virtual
-radio. A firmware that keeps to it runs on sim-mesh with nothing of it in
-sim-mesh, and sim-mesh runs any such firmware. **Must**, **must not** and
-**may** are requirements; everything else describes.
+This page is everything needed to make your own firmware for sim-mesh. It describes 
+the entire interface between sim-mesh and firmware adapted for it: the zip file format and everything that is provided to a station: time, the driver, the ether and the virtual radio. sim-mesh doesn't know anything about any specific firmware: it only talks to its driver.
+
+sim-mesh has an ether process that takes transmissions from all the stations and decides what, if anything, each of the others receives, and when. Firmware can speak the ether's protocol directly, but most use a virtual radio sim-mesh provides instead. One is a model of the SX1262 LoRa transceiver, linked into your firmware in place of the real chip's SPI bus. Your driver talks to it frame by frame as it would to the hardware: it reads and writes registers, and when a packet arrives the virtual DIO1 line rises and your interrupt handler runs. Meanwhile, a small library loaded into every station, the time shim, answers the C library's clocks, sleeps and timeouts with simulated time, and random numbers come from the run's seed, so a run can be reproduced.
+
+In this document, **Must**, **must not** and **may** are requirements; everything else describes.
+
 
 ```
 project ── its own script ──► <base>_<arch>_<version>.zip ──► sim firmware add ──► firmware/<name>/
@@ -103,6 +105,7 @@ the driver's `env`.
 | `LD_PRELOAD` | virtual time: the time shim, `libsimclock.so` (§5) |
 | `SIM_MESH_IDLE` | set by a driver whose station does not call `simradio_idle()` itself: `threads`, and the shim says the station is idle when every thread is blocked |
 | `SIM_MESH_CLOCK_PROFILE` | optional, from node.yaml's `env`, or from simd's `--clock-ppm` (a crystal off by a draw within that many parts per million, per station), node.yaml's winning: node time as a function of T, `T:node,T:node,…` in microseconds, both increasing, slope 1 outside the points; absent, node time is T |
+| `SIM_MESH_STRICT_TIME` | optional: `1` in the environment sim-mesh runs in, which its ether reads and its stations inherit, for strict time (§5) |
 
 A station reads its identity from these and from nowhere else, so two
 stations on one host never collide. **A station never learns where it
@@ -145,6 +148,11 @@ carry a radio library.
 
 ## 5. Time
 
+In simulated time, the clock belongs to sim-mesh, not your computer. It
+stands still while any station is still busy, then jumps straight to the next
+moment something is due to happen. Most firmware works this way without
+changes, as long as it keeps the four promises below.
+
 In a real-time run a station keeps the host's time. In a virtual-time run the
 ether owns conductor time T and moves it only when every station is idle
 (§8), and a station keeps four promises:
@@ -170,8 +178,25 @@ ether owns conductor time T and moves it only when every station is idle
 - **It reads its console and talks TCP to other stations through the C
   library**: `read` on descriptor 0, and `read`/`recv`/`send`/`write` on its
   sockets. The shim counts those bytes for the ether, which holds T until a
-  station has read what it was sent. Input taken another way holds T a
-  second of wall time each time.
+  station has read what it was sent; a station that has read its input owes
+  an idle for the work it does on it. Input taken another way holds T a
+  second of wall time each time, or, under strict time, for good.
+
+**Strict time.** Ordinarily the host's speed can still leak into a run: a
+station that stays busy past the watchdog has T moved under it by however
+long this host took, and two runs part there. With `SIM_MESH_STRICT_TIME=1`
+nothing on the wall clock decides where T goes, and two runs given the same
+seed and epoch match line for line:
+
+- the watchdog answers for a station only once none of its threads is
+  running; one still at work holds T however long it takes, and one that
+  never stops stops the run, saying so every 10 s of wall time;
+- a thread that waits for time by reading the clock in a loop sees T move:
+  its 100 000th read of one instant first sleeps until the next whole
+  millisecond of node time (or the chips' next event, with
+  `SIM_MESH_SHORT_WAITS=chip`), and while it goes on waiting each next
+  instant takes 1 000 reads;
+- input a station has not read holds T however long its host takes.
 
 In return, nothing the ether says reaches the host piecemeal. The radio
 library applies a datagram whole, the chip's own timers running as T moves,
@@ -180,6 +205,12 @@ before the host is told of any of it: the host's waits that fall due,
 of T.
 
 ## 6. The driver
+
+The driver is a translator. When a script says "send a message", the driver
+turns that into something your firmware understands: a command on its
+console, an RPC call, a tool it runs. It also reads what your firmware
+prints, so sim-mesh can tell whether the message arrived. This is the only
+firmware-specific code sim-mesh ever runs.
 
 The driver is a Python module in the zip, imported by sim-mesh from the
 installed firmware's directory under a module name of its own. It **must**
@@ -238,6 +269,10 @@ ether, at the T of its hello (at once in a real-time run), so what the
 driver does next it does at that T; `with self.tool_turn(station):` around a
 tool run against the station's host door, during which T stands while the
 tool has the floor and runs while the station works on what it read;
+`await self.tool_settle(station, timeout=5.0)`, inside that turn before the
+tool writes, waits on the wall clock until the station has said it is idle,
+so its bytes land at the turn's T rather than in the middle of the station's
+work there, and never moves T;
 `await self.rpc_ready(station, timeout, marker_wait_s)` and
 `await self.rpc_query(station, line, timeout=None)`, framed RPC.
 
@@ -257,6 +292,12 @@ bytes; the id is a hash of the command, so a retry carries the one it had
 ([Framed RPC on the console](https://github.com/sim-mesh/sim-mesh#framed-rpc-on-the-console)).
 
 ## 7. The `reticulum` category
+
+Every firmware does things its own way, but a script shouldn't have to care.
+A category is a shared vocabulary: every MeshCore firmware answers `msg` and
+`advert`, every Meshtastic one answers `sendtext`, so one script can drive any
+firmware of that kind and compare them. This section and the next two give
+each category's vocabulary.
 
 A firmware of category `reticulum` is a Reticulum node. Its `DRIVER`
 subclasses `sim_mesh.reticulum.driver.ReticulumDriver` and implements these
@@ -403,10 +444,16 @@ restarted"`. The receiver's driver reports `msg.received` with the sender's
 
 ## 8. The ether's protocol
 
+You only need this section if you're writing your own radio model or
+simulating something that isn't an SX1262. If your firmware uses the virtual
+radio, the radio speaks this protocol for you.
+
 The ether is the medium between stations: it decides who hears each frame,
 from the run's loss tables, and in a virtual-time run it owns time. A
 station speaks to it over UDP, one JSON object per datagram, from a socket
 bound to its own address; payloads are base64, times in microseconds. The
+ether takes a station's `idle`, `state`, `tx` and `floor` only from the
+address it said `hello` from, and drops any other naming it. The
 virtual radio (§9) speaks it for a firmware; a firmware **may** speak it
 itself ([the ether's README](https://github.com/sim-mesh/sim-mesh/blob/main/ether/README.md)
 has the whole of it).
@@ -440,15 +487,15 @@ receiver → ether  idle {seq: 7, until: …}
 | `hello` | this station exists, and which radio slots it has; `"lines": 1`, it takes several messages to a datagram: in a virtual-time run it is sent every message the barrier has for it at one go |
 | `state` | a slot's mode (`RX`, `TX`, `CAD`, `STDBY_RC`, `SLEEP` …), its modulation `mod` and its carrier: the ether matches receivers on these |
 | `tx` | a transmission: its modulation and carrier, its power at the connector, its instants (start, end of preamble, of header, end), its payload |
-| `idle` | virtual time: done with everything message `seq` gave it; next needs to run at T `until` (null: not on its own) |
-| `read`, `wrote`, `listen` | virtual time: bytes taken from its console or from another station over TCP, about to be written to one (with `go`: waits for the ether's `go`), and a TCP endpoint it listens on; the time shim sends these |
+| `idle` | virtual time: done with everything message `seq` gave it; next needs to run at T `until` (null: not on its own); `n`, the station's own count of its idles |
+| `read`, `wrote`, `listen` | virtual time: bytes taken from its console or from another station over TCP, about to be written to one (with `go`: waits for the ether's `go`), and a TCP endpoint it listens on; the time shim sends these. A `read` counts as the station speaking: it owes an idle for the work it does on what it read |
 
 | Ether → station | Says |
 |---|---|
 | `welcome` | joined: `t`, `mode` (`real` or `virtual`), `rate`, `epoch`, `seed` |
 | `rx_begin` | a frame is arriving: its instants and its level; `cad: true` when it is energy to this station, not a frame to demodulate |
 | `rx_end` | that frame is over: the verdict (`clean`, `crc`), the payload, RSSI and SNR |
-| `run` | virtual time: T has reached what this station asked for, or it has input to work on |
+| `run` | virtual time: T has reached what this station asked for, or it is told the run's T before input reaches it |
 | `go` | virtual time: a TCP write asked for may go ahead |
 
 - **`mod`** is the modulation; a receiver hears only a frame in its own. The
@@ -462,7 +509,9 @@ receiver → ether  idle {seq: 7, until: …}
   and messages are applied strictly in `seq` order, never twice. T moves
   only when every station is idle, to the earliest of their `until`s and the
   air's next instant. An idle is said again every 250 ms of wall time until
-  something comes back; the ether answers an idle for an older `seq` said
+  something comes back, keeping its `n`, and the ether takes a copy of the
+  idle it already has for the current message for nothing, even after the
+  station has said something since; the ether answers an idle for an older `seq` said
   twice by sending what came after it again. A station that says `hello`
   again has restarted.
 - Unknown message types are ignored, on both sides.

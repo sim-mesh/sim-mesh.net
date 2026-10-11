@@ -3,14 +3,14 @@ title: Simulation
 permalink: /simulation/
 redirect_from:
   - /networks/
-description: The firmware, antennas, ground, nodes and scripts a simulation is made of, and how sim-mesh decides who hears whom.
+description: The firmware, antennas, geodata, nodes and scripts a simulation is made of, and how sim-mesh decides who hears whom.
 ---
 
 A simulation is several things that change for different reasons, each its
 own file so that changing one leaves the others alone: what the nodes run (a
-**firmware**), what they transmit and hear with (an **antenna**), the ground
-(**geodata**), the nodes on it (a **nodeset**), what they are told (a
-**script**), and what follows from ground and nodes, the **loss table**. The
+**firmware**), what they transmit and hear with (an **antenna**), where they
+are (**geodata**), the nodes on it (a **nodeset**), what they are told (a
+**script**), and what follows from geodata and nodes, the **loss table**. The
 chapters below follow the app's tabs.
 
 ## Firmware
@@ -35,17 +35,17 @@ draws every pattern.
 
 ## Geodata
 
-The ground nodes stand on, one directory each under `testbed/geodata/`, of
+What nodes stand on, one directory each under `testbed/geodata/`, of
 one of two kinds.
 
-**Synthetic ground** lies at 0°, 0°, its degrees metres by one fixed rule (a
+**Synthetic geodata** lies at 0°, 0°, its degrees metres by one fixed rule (a
 nautical mile to the minute of arc), so a nodeset made on one synthetic
-ground stands on any other. A pair's loss is log-distance,
+geodata stands on any other. A pair's loss is log-distance,
 `FSPL(1 m, f) + 10·n·log10(d)`, with `n` 2 for free space, 2.7 suburban.
 
-**A pack** is ground compiled from public sources — terrain, clutter,
+**A geodata pack** is compiled from public sources — terrain, clutter,
 buildings, roads and places, in a UTM zone. A pair's loss on it is ITU-R
-P.1812-8 over the real profile, and the map draws the pack's ground, roads
+P.1812-8 over the real profile, and the map draws the pack's terrain, roads
 and buildings with the notices of its sources. **Build** on the
 **Geodata** tab makes one over a rectangle of the map, taking the best source
 for each part of it:
@@ -66,10 +66,10 @@ for each part of it:
 
 A geodata goes from one machine to another as a zip, **Export zip** and
 **Import zip**; a bare planner pack imports too. Nodes are never part of
-the ground: they belong to nodesets.
+the geodata: they belong to nodesets.
 
-**Pre-built ground** comes from an **index**: one YAML file listing geodata
-packs and nodesets, each by its sha256, so ground meant for comparable tests
+**Pre-built geodata packs** come from an **index**: one YAML file listing geodata
+packs and nodesets, each by its sha256, so geodata meant for comparable tests
 is the same bytes on every machine. sim-mesh's own index, `sim-mesh-examples`,
 is at [sim-mesh.net/examples/index.yaml]({{ '/examples/index.yaml' | relative_url }}):
 reference environments for comparing mesh protocols and firmware versions,
@@ -121,7 +121,10 @@ run's own copy of its nodeset.
 
 ### Who hears whom
 
-There are no stated links. The level a frame arrives at is
+You never draw links between nodes. Whether one node hears another is worked
+out from the physics: how far apart they are, the terrain and buildings
+between them, their antennas and power, and whatever else is transmitting at
+the same moment. The level a frame arrives at is
 
 ```
 L = P_tx + G_tx + G_rx − loss(tx → rx) − offset − 20·log10(f / f0)
@@ -137,7 +140,7 @@ for itself, frame by frame, over every stretch of its air.
 
 **The loss table** is every ordered pair's path loss for one nodeset on one
 geodata in one band, derived and cached under a hash of exactly what it
-depends on: the ground and the nodes' positions and heights. Antennas and
+depends on: the geodata and the nodes' positions and heights. Antennas and
 offsets are layers put on it when the medium is given it, so changing them
 never recomputes it. Every pair is computed, not only those strong enough to
 carry a frame, because a pair far too weak to decode still adds to a

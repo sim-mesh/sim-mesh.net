@@ -3,7 +3,7 @@ tagline: Radio propagation & coverage planning
 description: >-
   sim-mesh runs real LoRa mesh firmware, built as Linux processes, over a
   model of the radio chip and one medium that decides who hears what from the
-  ground they stand on, in real time or in virtual time.
+  geodata they stand on, in real time or in virtual time.
 email: crew@sim-mesh.net
 # Where the site's GitHub links go: the sim-mesh repository, as the
 # organisation's own front page has nothing on it yet.

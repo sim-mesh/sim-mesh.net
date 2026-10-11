@@ -45,11 +45,11 @@ sim-mesh/sim firmware add <a zip, or its URL>
 sim-mesh/sim firmware list
 ```
 
-## 4. Ground and nodes
+## 4. Geodata and nodes
 
-Geodata and nodesets are fetched from an index or made here. On the
+Geodata and nodesets can be fetched from an index or made locally. On the
 **Geodata** tab, **Download pre-built geodata packs** lists what sim-mesh's own
-index and any you add offer, and a click on one installs it; or make ground —
+index and any you add offer, and a click on one installs it; or make geodata packs —
 **Build** over a rectangle of the map, or **New synthetic** — and click it
 to choose it. The **Nodes** tab lists the nodesets on it beside a map of
 them: **New** one and place nodes on it, **Import** them from a public node
@@ -61,7 +61,7 @@ says what each of those is.
 
 On the **Scripts** tab open `lxmf-traffic`, choose the firmware its nodes
 run in **Firmware for nodes not otherwise configured** above the script, and
-**Run** it: a new simulation of the nodeset on that ground, in virtual time.
+**Run** it: a new simulation of the nodeset on that geodata, in virtual time.
 The page goes over to the simulation's live map and its stations come up;
 rings on the map are frames on the air. When it is done the simulation is
 paused and its **Report** says how much of an hour of messages arrived.

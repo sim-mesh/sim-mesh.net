@@ -6,6 +6,11 @@ redirect_from:
 description: Plain Python that says what a simulation's nodes run and what is done to them.
 ---
 
+A script is how you tell a simulation what to do. It picks which firmware the
+nodes run, then plays out a scenario over time: start the nodes, let them
+announce, wait ten minutes, send a message, see what arrived. Think of it as
+a test script for a whole mesh network.
+
 A script is plain Python against sim-mesh's own library, run from its top to
 its end, each call doing what it says and returning when it has:
 

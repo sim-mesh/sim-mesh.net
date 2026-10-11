@@ -22,7 +22,7 @@ hero_shots:
 description: >-
   sim-mesh runs real LoRa mesh firmware, built as Linux processes, over a
   model of the radio chip and one medium that decides who hears what from the
-  ground they stand on, in real time or in virtual time.
+  geodata they stand on, in real time or in virtual time.
 ---
 
 **sim-mesh** is a LoRa testbed. Its stations are real firmware, built for
@@ -97,7 +97,7 @@ them and builds geodata packs from public data. Around them are the things sim-m
 
 - **firmware** — station builds, each a zip with its own driver, installed
   from a file or from [the pre-built ones]({{ '/firmware/' | relative_url }});
-- **geodata** — the ground, a pack fetched pre-built from an index or built from public sources, or synthetic;
+- **geodata** — a geodata pack fetched pre-built from an index or built from public sources, or synthetic geodata;
 - **nodesets** — which nodes stand where, with what antenna and power;
 - **scripts** — plain Python that says what each node runs and what is done;
 - **runs** and **snapshots** — what a simulation did, and moments of it to
@@ -108,3 +108,13 @@ how to talk to it through its **driver**, a Python module in its own zip, and
 a script asks for the same things — an announce, a message, a path — of every
 firmware of a category. There are three categories: Reticulum, MeshCore
 (companions, repeaters and room servers) and Meshtastic.
+
+sim-mesh can run in real time, so you can play with a live network as it
+happens, or in simulated time, either as fast as your computer allows or at a
+speed you choose. In simulated time your firmware sees a clock that only moves
+forward once every node is done, so a day of network activity can take
+minutes. A slow or busy computer makes the run take longer, but doesn't change
+what happens in it. Runs can be reproducible: given the same random seed, a
+simulated-time run plays out identically, which makes bugs much easier to
+chase down. You
+can also save a run at any moment and pick it up again later.
