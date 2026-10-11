@@ -12,8 +12,7 @@ everything inside it, with port 8800 published.
 
 ## 1. Clone it
 
-The directory you clone into is the one `sim` mounts into its image, so
-a firmware tree put beside sim-mesh later can build against its radio:
+As you can see below, we're creating a new directory and clone into it. That intermediary directory you clone into is the one `sim` mounts into its Docker/podman container. This allows optional firmware images later cloned/built next to sim-mesh to build against its radio.
 
 ```sh
 mkdir mesh && cd mesh
@@ -27,23 +26,23 @@ sim-mesh/sim
 ```
 
 It builds whichever of the page, the virtual radios and the planner is not
-built yet or is older than its sources (the first time, several minutes),
-starts the front and opens `http://localhost:8800/`. The terminal is the
-testbed's: Ctrl-C there stops every simulation and everything they started.
-`sim run SCRIPT …` starts one in the background instead when none is running,
-and opens the page on the run.
+built yet or is older than its sources. So the first time this may take several minutes. Then it starts the server and opens `http://localhost:8800/` in your default browser to show the UI. The terminal window itself shows events and errors: Ctrl-C there stops every simulation and everything they started.
+
+`sim run <script> [...]` runs a script instead, by its name on the Scripts tab or as a path to a .py file. If the sim-mesh server isn't already running, it starts it in the background first, and opens the page on the run.
 
 ## 3. Add firmware
 
 On the **Firmware** tab, **Download pre-built firmware** lists what this site
 offers for your machine's architecture and **Add** installs one; **Import
-zip** installs a zip of your own. From a shell:
+zip** installs a zip of your own. Or from the command line:
 
 ```sh
-sim-mesh/sim firmware prebuilt               # what sim-mesh.net offers this machine
+sim-mesh/sim firmware prebuilt       # list what sim-mesh.net offers this machine
 sim-mesh/sim firmware add <a zip, or its URL>
-sim-mesh/sim firmware list
+sim-mesh/sim firmware list           # show list of installed firmware
 ```
+
+For the purposes of showing something quickly, let's run some reticulum software. Install "Reticulous" ESP32 firmware and "Sergeyculum" nRF firmware. 
 
 ## 4. Geodata and nodes
 
@@ -56,6 +55,8 @@ them: **New** one and place nodes on it, **Import** them from a public node
 map or a file, or fetch one under **Download pre-built nodesets**; a click
 on a nodeset opens it to edit. [Simulation]({{ '/simulation/' | relative_url }})
 says what each of those is.
+
+For the purposes of the demonstration, install the 'berlin-centre' example provided.
 
 ## 5. A first simulation
 
