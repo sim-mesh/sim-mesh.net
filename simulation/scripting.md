@@ -112,6 +112,28 @@ every driver answers, whatever its category:
 | `.radio(freq_mhz=, sf=, bw_khz=, cr=, tx_dbm=, sync=, preamble=)` | slot 0's LoRa settings, only those given; `tx_dbm` at the antenna connector, `"max"` each node's own maximum |
 | `.radio_up()` | the radio started, for a firmware whose radio waits for it |
 
+## Messaging, whatever the protocol
+
+Sending a message works differently in every mesh, but a script that just
+wants "a message from this node to that one" shouldn't have to care. These
+two commands work on any selection, and each node does them in its own
+protocol, so one script runs unchanged on Reticulum, MeshCore or Meshtastic,
+or on a mix of them:
+
+```python
+node("fred").message("sylvia", "hello")    # {node: the message's id}
+nodes(tag="repeater").announce()
+```
+
+| Command | Reticulum | MeshCore | Meshtastic |
+|---|---|---|---|
+| `.message(to, text)`: a direct message to the node `to`, answering its id | `.reticulum.lxmf.send` | `.meshcore.msg` | `.meshtastic.sendtext` |
+| `.announce(spread=0)`: each node made known to the others | `.reticulum.lxmf.announce` | `.meshcore.floodadv` | `.meshtastic.nodeinfo` |
+
+What became of each message is in the run's events: the recipient's driver
+reports it arriving, and the sender's whether a proof or acknowledgement
+came back. The traffic runs below count both.
+
 ## Reticulum commands
 
 Under `.reticulum`, for a selection's nodes of category `reticulum` and
@@ -190,11 +212,50 @@ and its errors are kept in the run's `scripts.log`. `def report(run_dir)`
 returns the run's report as Markdown, written beside the run with an ETSI
 (EN 300 220) compliance section after it.
 
-## The LXMF traffic run
+## The traffic runs
 
-`scripts/lxmf-traffic.py` is a whole LXMF run on virtual time, on any
-`reticulum` firmware: announce warm-up until paths stop growing, a seeded
-hour of messages, a drain, and the simulation paused. Its report is what the
-senders' drivers reported of each message: delivered overall, by route and
-radio hops and by size, the latency, and the undelivered by the last status
-reported.
+Two scripts that come with sim-mesh run a whole test on virtual time:
+announce warm-up until what the nodes know of each other stops growing, a
+seeded hour of messages, a drain, and the simulation paused with a report.
+
+**`msg-traffic`** compares protocols. Its messages go between the nodes
+*not* tagged `repeater`; the repeaters only forward. It asks for two
+firmware, one for the repeaters and one for the rest, and works out the
+protocol from what the nodes run, refusing a mix. For MeshCore the two are a
+repeater build and a companion; for Meshtastic and Reticulum they may be
+one. Under Reticulum they may also differ: the repeaters need no LXMF of
+their own, so a firmware that only forwards can be theirs while an LXMF one
+sends the messages.
+Its messages are 20–55 characters, short enough for every protocol to carry
+in one packet, and the same seed sends the same messages between the same
+pairs at the same moments, whatever the protocol. [Getting started]({{ '/getting-started/' | relative_url }})
+runs it on `berlin-centre` with `berlin-50`:
+
+```sh
+sim run msg-traffic --geodata berlin-centre --nodeset berlin-50 \
+    --set firmware=meshcore-companion-sx1262_latest \
+    --set repeater_firmware=meshcore-repeater-sx1262_latest
+```
+
+Its third input, `reticulous_settings`, gives Reticulous nodes settings at
+first boot, before their radio starts, separated by `;`: `set
+s.lxmf.stamp_cost 0; set s.lxmf.generate_stamps 0` turns stamps off, `set
+s.lora.0.community_radius 10` widens the community radius. Reticulous is
+always told to send a message that fits one packet as that packet, and to
+retry it the same way.
+
+**`lxmf-traffic`** is the same run on one `reticulum` firmware, every node
+sending, with LXMF's own mix of sizes up to 650 characters.
+
+**The report** counts every message twice:
+
+- **delivered**: it reached its recipient, as the recipient's driver
+  reports. One that arrived and was refused (a full mailbox) is counted
+  apart, and is not delivered.
+- **proven**: the sender heard so, a proof or acknowledgement back across the
+  mesh, which can be lost like any other packet. Shown as a number of its
+  own and as a share of the delivered.
+
+Both are broken down by route hops at send time, by radio hops (from the
+run's loss tables), and by size, with the time to arrival and to proof, and
+the undelivered by the last word on them.

@@ -1,7 +1,15 @@
 ---
 title: Getting started
-description: Clone sim-mesh, start it, add firmware, and run a first simulation.
+description: Clone sim-mesh, start it, and run a first test — an hour of messages across 50 nodes in central Berlin, on MeshCore, Meshtastic or Reticulum — in a few minutes.
 ---
+
+By the end of this page you will have run a real test: 50 nodes standing
+where a real MeshCore network stands in central Berlin, 40 of them repeaters,
+and the other 10 sending each other an hour of messages, all of it simulated
+in a few minutes, on the mesh protocol you pick: MeshCore, Meshtastic or
+Reticulum. The report says how many messages arrived, how many the sender
+heard back about, and how long they took. Then you can run the same test on
+another protocol and compare.
 
 sim-mesh needs no firmware tree: stations are firmware zips, added from a
 file or from the [pre-built ones]({{ '/firmware/' | relative_url }}).
@@ -32,40 +40,101 @@ built yet or is older than its sources. So the first time this may take several 
 
 ## 3. Add firmware
 
-On the **Firmware** tab, **Download pre-built firmware** lists what this site
-offers for your machine's architecture and **Add** installs one; **Import
-zip** installs a zip of your own. Or from the command line:
+The first test runs one mesh protocol at a time, and you pick which:
+MeshCore, Meshtastic, or Reticulum. Install the firmware it needs: on the
+**Firmware** tab, under **Download pre-built firmware**, **Add** them.
+
+| Protocol | For the repeaters | For the other nodes |
+|---|---|---|
+| MeshCore | MeshCore repeater | MeshCore companion |
+| Meshtastic | Meshtastic | the same |
+| Reticulum | any Reticulum firmware: Reticulous (dev or stable), Sergeyculum | the same, or another Reticulum firmware |
+
+MeshCore needs two firmware. A MeshCore repeater is a build of its own that
+only forwards, and the nodes people message from are companions, another
+build. Meshtastic and Reticulum run one firmware everywhere, and the test
+tells the repeaters to forward. Under Reticulum the repeaters need no
+messaging of their own, so a firmware that only forwards can be theirs while
+another sends the messages.
+
+Or from the command line:
 
 ```sh
-sim-mesh/sim firmware prebuilt       # list what sim-mesh.net offers this machine
-sim-mesh/sim firmware add <a zip, or its URL>
-sim-mesh/sim firmware list           # show list of installed firmware
+sim-mesh/sim firmware prebuilt       # what sim-mesh.net offers this machine
+sim-mesh/sim firmware add https://sim-mesh.net/firmware/<name>.zip   # once for each
+sim-mesh/sim firmware list           # what is installed
 ```
 
-For the purposes of showing something quickly, let's run some reticulum software. Install "Reticulous" ESP32 firmware and "Sergeyculum" nRF firmware. 
+**Import zip** installs a firmware of your own; [Building firmware]({{ '/using-firmware/building/' | relative_url }})
+says how to make one.
 
 ## 4. Geodata and nodes
 
-Geodata and nodesets can be fetched from an index or made locally. On the
-**Geodata** tab, **Download pre-built geodata packs** lists what sim-mesh's own
-index and any you add offer, and a click on one installs it; or make geodata packs —
-**Build** over a rectangle of the map, or **New synthetic** — and click it
-to choose it. The **Nodes** tab lists the nodesets on it beside a map of
-them: **New** one and place nodes on it, **Import** them from a public node
-map or a file, or fetch one under **Download pre-built nodesets**; a click
-on a nodeset opens it to edit. [Simulation]({{ '/simulation/' | relative_url }})
-says what each of those is.
+A simulation needs geodata, the terrain and buildings the nodes stand among,
+and a nodeset, which nodes stand where. Both can be downloaded ready-made:
 
-For the purposes of the demonstration, install the 'berlin-centre' example provided.
+1. On the **Geodata** tab, under **Download pre-built geodata packs**, click
+   **berlin-centre**: about 15 × 12 km of central Berlin, with its
+   buildings. It brings its nodeset with it, **berlin-50**: the 40 repeaters
+   and 10 companions nearest the middle of it, where a real MeshCore network
+   advertised them.
+2. Click **berlin-centre** in the installed list to choose it.
+3. On the **Nodes** tab, click **berlin-50** to open it: its nodes appear on
+   the map.
 
-## 5. A first simulation
+From the command line, `sim-mesh/sim geodata add berlin-centre` downloads
+both. [Simulation]({{ '/simulation/' | relative_url }}) says what geodata
+and nodesets are, and how to build or draw your own.
 
-On the **Scripts** tab open `lxmf-traffic`, choose the firmware its nodes
-run in **Firmware for nodes not otherwise configured** above the script, and
-**Run** it: a new simulation of the nodeset on that geodata, in virtual time.
-The page goes over to the simulation's live map and its stations come up;
-rings on the map are frames on the air. When it is done the simulation is
-paused and its **Report** says how much of an hour of messages arrived.
+## 5. A first test
+
+On the **Scripts** tab open **msg-traffic**. It runs on the geodata and
+nodeset you just chose. Above the script, choose the two firmware from the
+table in step 3:
+
+- **Firmware for the nodes that are not repeaters**: for MeshCore the
+  companion, otherwise the protocol's firmware
+- **Firmware for the repeaters**: for MeshCore the repeater, otherwise the
+  same firmware again
+
+and **Run** it. Or from the command line, here for MeshCore:
+
+```sh
+sim-mesh/sim run msg-traffic --geodata berlin-centre --nodeset berlin-50 \
+    --set firmware=meshcore-companion-sx1262_latest \
+    --set repeater_firmware=meshcore-repeater-sx1262_latest
+```
+
+and for Meshtastic, the one firmware in both:
+
+```sh
+sim-mesh/sim run msg-traffic --geodata berlin-centre --nodeset berlin-50 \
+    --set firmware=meshtastic-sx1262_latest \
+    --set repeater_firmware=meshtastic-sx1262_latest
+```
+
+`sim-mesh/sim firmware list` shows the names of what you installed.
+`meshtastic-sx1262_latest` is always the newest Meshtastic release you have
+installed, so these lines keep working as releases come and go.
+
+The page goes over to the simulation's live map. The 50 stations come up,
+announce themselves for a while, and then the 10 companions send each other a
+message every 5 seconds for an hour, between pairs drawn at random. Rings on
+the map are frames on the air. It runs in simulated time, as fast as your
+machine allows: a few minutes for the whole hour. When it is done the
+simulation is paused and its **Report** opens.
+
+The report counts every message twice. **Delivered** is whether it reached
+the node it was sent to. **Proven** is whether the sender heard so: an
+acknowledgement back across the mesh, which can be lost on the way like any
+other packet. Both are broken down by how many hops the message needed,
+with how long it took.
+
+**Then try another protocol.** Install another protocol's firmware (step 3)
+and run msg-traffic again with it: the same seed sends the same messages
+between the same nodes at the same moments, so the reports compare like for
+like. The two firmware must be of one protocol: msg-traffic refuses a mix,
+since it compares one at a time.
 
 For a simulation to work with by hand, run `realtime`: every node on the
 chosen firmware, on the wall clock, set up and left running.
