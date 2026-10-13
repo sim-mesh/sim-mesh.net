@@ -15,8 +15,10 @@ sim-mesh needs no firmware tree: stations are firmware zips, added from a
 file or from the [pre-built ones]({{ '/firmware/' | relative_url }}).
 
 It needs **Docker or Podman** and nothing else, on Linux, a Mac or Windows:
-`sim` builds its own image on first use (a few minutes, once) and runs
-everything inside it, with port 8800 published.
+`sim` pulls its own image on first use (about 50 MB) and runs everything
+inside it, with port 8800 published. What sim-mesh compiles comes prebuilt,
+a few MB more. On Linux, `sim-mesh/sim install` runs it on the machine
+instead, with no container at all.
 
 ## 1. Clone it
 
@@ -33,8 +35,10 @@ git clone https://github.com/sim-mesh/sim-mesh.git
 sim-mesh/sim
 ```
 
-It builds whichever of the page, the virtual radios and the planner is not
-built yet or is older than its sources. So the first time this may take several minutes. Then it starts the server and opens `http://localhost:8800/` in your default browser to show the UI. The terminal window itself shows events and errors: Ctrl-C there stops every simulation and everything they started.
+The first time, it pulls the image and fetches the page, the virtual radios,
+the ether's conductor and the planner, prebuilt for the sources you cloned:
+a minute or so on a fair connection. After a `git pull` it fetches whichever
+of them changed. Then it starts the server and opens `http://localhost:8800/` in your default browser to show the UI. The terminal window itself shows events and errors: Ctrl-C there stops every simulation and everything they started.
 
 `sim run <script> [...]` runs a script instead, by its name on the Scripts tab or as a path to a .py file. If the sim-mesh server isn't already running, it starts it in the background first, and opens the page on the run.
 

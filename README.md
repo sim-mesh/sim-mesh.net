@@ -34,7 +34,8 @@ site without a commit here.
 ## Previewing
 
 With this repo checked out beside sim-mesh, `sim dev` there serves it at
-`http://localhost:4000/` from its image, live-reloading as pages are saved;
+`http://localhost:4000/` from its development image (built the first time
+`sim dev` runs), live-reloading as pages are saved;
 it makes the contract's page from the sim-mesh beside it when it starts, so
 an edit to `CONTRACT.md` shows after `sim dev` is started again. Without
 `sim dev`, with Ruby and bundler, make the contract's page first (the build
