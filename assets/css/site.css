@@ -135,7 +135,9 @@ em,i{font-style:italic}
   font-weight:400;
 }
 /* Screenshots under the tagline, two to a row across the whole window, each
-   zooming on a click. */
+   zooming on a click. On a phone-class viewport they stack one to a row; the
+   cut-off is the one the Spangap web UI uses for its phone layout (Quasar's
+   "lt.md", below 1024px). */
 .hero-shots{
   display:grid;
   grid-template-columns:repeat(2,minmax(0,1fr));
@@ -144,6 +146,7 @@ em,i{font-style:italic}
   margin:0 0 40px;
 }
 .hero-shots .shot{margin:0}
+@media (max-width:1023px){.hero-shots{grid-template-columns:minmax(0,1fr)}}
 
 /* ---------- body grid ---------- */
 .site-main{flex:1 0 auto;padding-bottom:20px}
